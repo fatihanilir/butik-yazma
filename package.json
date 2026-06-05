@@ -1,0 +1,25 @@
+{
+  "name": "butikyazma",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace frontend\" \"npm run dev --workspace admin\" \"npm run dev --workspace backend\"",
+    "migrate": "npm run migrate --workspace backend",
+    "seed": "npm run seed --workspace backend",
+    "install:all": "npm install --workspaces"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "admin",
+    "backend"
+  ],
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "vite": "^8.0.10"
+  }
+}
