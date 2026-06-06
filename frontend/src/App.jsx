@@ -154,7 +154,22 @@ function HomePage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch(`${API}/categories`).then((r) => r.json()).then(setCategories);
+    fetch(`${API}/categories`)
+      .then(async (r) => {
+        if (!r.ok) throw new Error("Categories request failed");
+        const payload = await r.json();
+        const categoryList = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload.categories)
+            ? payload.categories
+            : Array.isArray(payload.data)
+              ? payload.data
+              : [];
+        setCategories(categoryList);
+      })
+      .catch((error) => {
+        console.error(error);
+      });
   }, []);
 
   useEffect(() => {
@@ -164,9 +179,22 @@ function HomePage() {
     if (activeCategory) params.set("category", activeCategory);
     if (searchQuery) params.set("search", searchQuery);
     fetch(`${API}/products?${params.toString()}`)
-      .then((r) => r.json())
-      .then((data) => setProducts(data.map(normalizeProduct)))
-      .catch(() => setError("Urunler yuklenemedi."))
+      .then(async (r) => {
+        if (!r.ok) throw new Error("Products request failed");
+        const payload = await r.json();
+        const productList = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload.products)
+            ? payload.products
+            : Array.isArray(payload.data)
+              ? payload.data
+              : [];
+        setProducts(productList.map(normalizeProduct));
+      })
+      .catch((error) => {
+        console.error(error);
+        setError("Urunler yuklenemedi.");
+      })
       .finally(() => setLoading(false));
   }, [activeCategory, searchQuery]);
 
