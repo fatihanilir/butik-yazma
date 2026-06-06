@@ -15,19 +15,53 @@ function normalizeImageUrl(value) {
   return `${API}/uploads/${value.replace(/^\/+/, "")}`;
 }
 
-function normalizeProduct(product) {
-  const images = (product.images || []).map((image) => ({ ...image, url: normalizeImageUrl(image.url) }));
-  const colors = (product.colors || []).map((color) => ({
-    ...color,
-    images: (color.images || []).map((img) => ({ ...img, url: normalizeImageUrl(img.url) })),
-  }));
-  const primaryImage = normalizeImageUrl(
-    product.primaryImage || images.find((i) => i.is_primary)?.url || images[0]?.url
-  );
+function toNumberOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeSize(size) {
+  const raw = size && typeof size === "object" ? size : {};
   return {
-    ...product,
+    ...raw,
+    stock_quantity: toNumberOrNull(raw.stock_quantity) ?? 0,
+  };
+}
+
+function normalizeProduct(product) {
+  const safe = product && typeof product === "object" ? product : {};
+
+  const images = (Array.isArray(safe.images) ? safe.images : []).map((image) => ({
+    ...image,
+    url: normalizeImageUrl(image?.url),
+  }));
+
+  const colors = (Array.isArray(safe.colors) ? safe.colors : []).map((color) => {
+    const safeColor = color && typeof color === "object" ? color : {};
+    return {
+      ...safeColor,
+      images: (Array.isArray(safeColor.images) ? safeColor.images : []).map((img) => ({
+        ...img,
+        url: normalizeImageUrl(img?.url),
+      })),
+      sizes: (Array.isArray(safeColor.sizes) ? safeColor.sizes : []).map(normalizeSize),
+    };
+  });
+
+  const sizes = (Array.isArray(safe.sizes) ? safe.sizes : []).map(normalizeSize);
+
+  const primaryImage = normalizeImageUrl(
+    safe.primaryImage || safe.primary_image || images.find((i) => i?.is_primary)?.url || images[0]?.url
+  );
+
+  return {
+    ...safe,
     images,
     colors,
+    sizes,
+    price: toNumberOrNull(safe.price),
+    category_name: safe.category_name ?? safe.categoryName ?? null,
     primaryImage,
   };
 }
@@ -168,7 +202,7 @@ function HomePage() {
         setCategories(categoryList);
       })
       .catch((error) => {
-        console.error(error);
+        console.error("Categories load error:", error);
       });
   }, []);
 
@@ -189,10 +223,20 @@ function HomePage() {
             : Array.isArray(payload.data)
               ? payload.data
               : [];
-        setProducts(productList.map(normalizeProduct));
+        const safeProducts = productList
+          .map((item) => {
+            try {
+              return normalizeProduct(item);
+            } catch (error) {
+              console.error("Product normalize error:", item, error);
+              return null;
+            }
+          })
+          .filter(Boolean);
+        setProducts(safeProducts);
       })
       .catch((error) => {
-        console.error(error);
+        console.error("Products load error:", error);
         setError("Urunler yuklenemedi.");
       })
       .finally(() => setLoading(false));
