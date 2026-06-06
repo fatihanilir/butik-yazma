@@ -12,8 +12,31 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 const app = express();
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (config.corsOrigins.includes("*")) return true;
+  if (config.corsOrigins.includes(origin)) return true;
+  try {
+    const { hostname } = new URL(origin);
+    if (hostname === "localhost" || hostname === "127.0.0.1") return true;
+    if (hostname.endsWith(".railway.app")) return true;
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-app.use(cors({ origin: config.corsOrigins, credentials: true }));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (isAllowedOrigin(origin)) return callback(null, true);
+      return callback(new Error(`Origin not allowed by CORS: ${origin}`));
+    },
+    credentials: true,
+  })
+);
 app.use(morgan("dev"));
 app.use(express.json({ limit: "2mb" }));
 app.use("/uploads", express.static(config.uploadDir));
