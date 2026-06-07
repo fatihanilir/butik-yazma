@@ -105,15 +105,14 @@ ADMIN_PASSWORD=<admin-sifresi>
 CORS_ORIGINS=https://<frontend-domain>,https://<admin-domain>
 ```
 
-5. **Volume** ekleyin ve `/app/uploads` yoluna mount edin (yuklenen gorseller kalici olsun).
-6. Deploy sonrasi migration ve seed:
+5. Deploy sonrasi migration ve seed:
 
 ```bash
 railway run npm run migrate
 railway run npm run seed
 ```
 
-7. Backend public URL'ini not alin (ornek: `https://butikyazma-api.up.railway.app`).
+6. Backend public URL'ini not alin (ornek: `https://butikyazma-api.up.railway.app`).
 
 ### 3. Frontend servisi
 
@@ -140,7 +139,7 @@ VITE_API_URL=https://<backend-railway-url>
 
 ### Production notlari
 
-- `UPLOAD_DIR=/app/uploads` mutlaka volume ile kullanilmalidir; aksi halde redeploy'da gorseller silinir.
+- Yuklenen gorseller PostgreSQL'deki `uploaded_files` tablosunda saklanir ve `/uploads/...` uzerinden servis edilir. Bu sayede Railway redeploy/push sonrasi gorseller kaybolmaz.
 - `VITE_API_URL` build sirasinda set edilmelidir; deploy sonrasi degistirirseniz frontend/admin'i yeniden build edin.
 - Backend CORS listesine frontend ve admin production URL'lerini ekleyin.
 - Gorsel URL'leri frontend/admin tarafinda `VITE_API_URL` uzerinden normalize edilir; API `/uploads/...` relative path dondurur.

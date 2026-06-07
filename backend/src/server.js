@@ -7,7 +7,7 @@ import fs from "fs";
 import { config } from "./config.js";
 import { query } from "./db.js";
 import { authRequired } from "./middleware/auth.js";
-import { upload } from "./middleware/upload.js";
+import { createUploadFilename, upload } from "./middleware/upload.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
@@ -43,10 +43,61 @@ app.use(express.json({ limit: "2mb" }));
 app.use("/uploads", express.static(config.uploadDir));
 const uploadsDir = config.uploadDir;
 
+app.get("/uploads/:filename", async (req, res, next) => {
+  try {
+    await ensureUploadedFilesTable();
+    const filename = path.basename(req.params.filename);
+    const { rows } = await query(
+      "select filename,mime_type,content from uploaded_files where filename=$1 limit 1",
+      [filename]
+    );
+    const file = rows[0];
+    if (!file) return next();
+
+    res.setHeader("Content-Type", file.mime_type || "application/octet-stream");
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    return res.send(file.content);
+  } catch (err) {
+    return next(err);
+  }
+});
+
 const SIZE_ORDER = ["Standart", "M", "L"];
 
 function imageUrlFromFile(file) {
   return `/uploads/${file.filename}`;
+}
+
+let uploadedFilesTablePromise;
+function ensureUploadedFilesTable() {
+  if (!uploadedFilesTablePromise) {
+    uploadedFilesTablePromise = query(
+      `create table if not exists uploaded_files (
+        id serial primary key,
+        filename text unique not null,
+        mime_type text not null,
+        size_bytes int not null,
+        content bytea not null,
+        created_at timestamptz default now()
+      )`
+    );
+  }
+  return uploadedFilesTablePromise;
+}
+
+async function saveUploadedFile(file) {
+  await ensureUploadedFilesTable();
+  const filename = createUploadFilename(file.originalname);
+  await query(
+    `insert into uploaded_files(filename,mime_type,size_bytes,content)
+     values($1,$2,$3,$4)
+     on conflict (filename) do update
+     set mime_type=excluded.mime_type,
+         size_bytes=excluded.size_bytes,
+         content=excluded.content`,
+    [filename, file.mimetype, file.size, file.buffer]
+  );
+  return { filename, url: imageUrlFromFile({ filename }) };
 }
 
 function publicImageUrl(url) {
@@ -343,7 +394,7 @@ app.put("/admin/products/:id", authRequired, async (req, res) => {
 app.post("/admin/upload", authRequired, upload.array("images", 8), async (req, res) => {
   const files = req.files || [];
   if (!files.length) return res.status(400).json({ message: "Gorsel yuklenemedi." });
-  const payload = files.map((file) => ({ filename: file.filename, url: imageUrlFromFile(file) }));
+  const payload = await Promise.all(files.map(saveUploadedFile));
   res.status(201).json(payload);
 });
 
@@ -356,6 +407,13 @@ app.delete("/admin/products/:id/images/:imageId", authRequired, async (req, res)
     if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
   }
   await query("delete from product_images where id=$1", [req.params.imageId]);
+  if (fileName) {
+    await ensureUploadedFilesTable();
+    await query(
+      "delete from uploaded_files where filename=$1 and not exists (select 1 from product_images where url like $2)",
+      [fileName, `%/uploads/${fileName}`]
+    );
+  }
   res.status(204).send();
 });
 
