@@ -21,6 +21,7 @@ function isAllowedOrigin(origin) {
     const { hostname } = new URL(origin);
     if (hostname === "localhost" || hostname === "127.0.0.1") return true;
     if (hostname.endsWith(".railway.app")) return true;
+    if (hostname === "butikyazmakatalog.com" || hostname.endsWith(".butikyazmakatalog.com")) return true;
   } catch {
     return false;
   }
