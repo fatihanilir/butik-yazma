@@ -21,6 +21,13 @@ function toNumberOrNull(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function formatPrice(value) {
+  if (value === null || value === undefined || value === "") return "Fiyat sorunuz";
+  let num = Number(value);
+  if (!Number.isFinite(num)) num = 0;
+  return `${num.toLocaleString("tr-TR")} TL`;
+}
+
 function normalizeSize(size) {
   const raw = size && typeof size === "object" ? size : {};
   return {
@@ -173,6 +180,7 @@ function ProductCard({ product }) {
           )}
         </div>
         <p>{product.category_name}</p>
+        <strong className="cardPrice">{formatPrice(product.price)}</strong>
       </motion.article>
     </Link>
   );
@@ -390,6 +398,7 @@ function DetailPage() {
         <article className="detailInfo">
           <h2 className="detailDesktopTitle">{product.name}</h2>
           <p>{product.description}</p>
+          <strong className="detailPrice">{formatPrice(product.price)}</strong>
           <span className="catTag">{product.category_name}</span>
           {colors.length > 0 && (
             <div className="colorRow">
