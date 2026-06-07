@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BrowserRouter, Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import useEmblaCarousel from "embla-carousel-react";
@@ -98,19 +98,27 @@ function statusText(size) {
   return "Stokta";
 }
 
+function InstagramIcon() {
+  return (
+    <svg className="socialIcon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7.8 2h8.4A5.8 5.8 0 0 1 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8A5.8 5.8 0 0 1 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2Zm0 2A3.8 3.8 0 0 0 4 7.8v8.4A3.8 3.8 0 0 0 7.8 20h8.4a3.8 3.8 0 0 0 3.8-3.8V7.8A3.8 3.8 0 0 0 16.2 4H7.8Zm4.2 3.2a4.8 4.8 0 1 1 0 9.6 4.8 4.8 0 0 1 0-9.6Zm0 2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Zm5.05-2.35a1.15 1.15 0 1 1 0 2.3 1.15 1.15 0 0 1 0-2.3Z" />
+    </svg>
+  );
+}
+
 function Layout({ children }) {
   return (
     <main className="page">
       <header className="topbar">
         <Link className="logo" to="/">Butik Yazma</Link>
         <div className="contact">
-          <a href="https://www.instagram.com/butikyazma/" target="_blank" rel="noreferrer" aria-label="Instagram">⌁ Instagram</a>
+          <a className="socialLink" href="https://www.instagram.com/butikyazma/" target="_blank" rel="noreferrer" aria-label="Instagram"><InstagramIcon /> Instagram</a>
           <a href="tel:02123250258" aria-label="Telefon">☎ 0212 325 02 58</a>
         </div>
       </header>
       {children}
       <footer className="footer">
-        <a href="https://www.instagram.com/butikyazma/" target="_blank" rel="noreferrer">⌁ @butikyazma</a>
+        <a className="socialLink" href="https://www.instagram.com/butikyazma/" target="_blank" rel="noreferrer"><InstagramIcon /> @butikyazma</a>
         <a href="tel:02123250258">☎ 0212 325 02 58</a>
       </footer>
     </main>
@@ -121,25 +129,46 @@ function ProductCard({ product }) {
   const images = product.images?.length ? product.images : [{ url: product.primaryImage, alt_text: product.name }];
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
-  const [canHover, setCanHover] = useState(false);
+  const touchStartX = useRef(null);
+  const didSwipe = useRef(false);
+  const hasSlider = images.length > 1;
+  const productCode = product.product_code || product.productCode || product.id;
 
   useEffect(() => {
-    setCanHover(typeof window !== "undefined" && window.matchMedia("(hover: hover)").matches);
-  }, []);
-
-  useEffect(() => {
-    if (!canHover || !isHovered || images.length <= 1) return undefined;
-    const starter = setTimeout(() => {
+    if (!hasSlider || isHovered) return undefined;
+    const timer = setInterval(() => {
       setActiveImageIndex((prev) => (prev + 1) % images.length);
-    }, 2000);
-    return () => clearTimeout(starter);
-  }, [canHover, isHovered, images.length, activeImageIndex]);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [hasSlider, isHovered, images.length]);
+
+  function goToImage(index, event) {
+    event?.preventDefault();
+    event?.stopPropagation();
+    setActiveImageIndex((index + images.length) % images.length);
+  }
+
+  function onTouchEnd(event) {
+    if (touchStartX.current === null || !hasSlider) return;
+    const diff = touchStartX.current - event.changedTouches[0].clientX;
+    touchStartX.current = null;
+    if (Math.abs(diff) < 35) return;
+    didSwipe.current = true;
+    setActiveImageIndex((prev) => (diff > 0 ? prev + 1 : prev - 1 + images.length) % images.length);
+  }
 
   const imgSrc = normalizeImageUrl(images[activeImageIndex]?.url || product.primaryImage);
-  console.log("[frontend.product-card.img]", { id: product.id, primaryImage: product.primaryImage, imgSrc });
   const out = product.sizes?.every((x) => x.stock_quantity === 0);
   return (
-    <Link className="cardLink" to={`/urun/${product.id}`}>
+    <Link
+      className="cardLink"
+      to={`/urun/${product.id}`}
+      onClick={(event) => {
+        if (!didSwipe.current) return;
+        event.preventDefault();
+        didSwipe.current = false;
+      }}
+    >
       <motion.article
         className="card"
         whileHover={{ y: -6 }}
@@ -147,8 +176,13 @@ function ProductCard({ product }) {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <h3 className="cardTitle">{product.name}</h3>
-        <div className="cardImageWrap">
+        <div
+          className="cardImageWrap"
+          onTouchStart={(event) => {
+            touchStartX.current = event.touches[0].clientX;
+          }}
+          onTouchEnd={onTouchEnd}
+        >
           <AnimatePresence mode="wait">
             <motion.img
               key={`${product.id}-${activeImageIndex}`}
@@ -162,25 +196,28 @@ function ProductCard({ product }) {
             />
           </AnimatePresence>
           {out && <span className="badge">Tukendi</span>}
-          {images.length > 1 && (
-            <div className="cardDots" onClick={(e) => e.preventDefault()}>
+          {hasSlider && (
+            <>
+              <button className="cardArrow left" type="button" onClick={(event) => goToImage(activeImageIndex - 1, event)} aria-label="Onceki gorsel">‹</button>
+              <button className="cardArrow right" type="button" onClick={(event) => goToImage(activeImageIndex + 1, event)} aria-label="Sonraki gorsel">›</button>
+              <div className="cardDots" onClick={(e) => e.preventDefault()}>
               {images.map((_, index) => (
                 <button
                   key={`${product.id}-dot-${index}`}
                   className={`cardDot ${index === activeImageIndex ? "active" : ""}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setActiveImageIndex(index);
-                  }}
+                  onClick={(event) => goToImage(index, event)}
                   aria-label={`${index + 1}. gorsel`}
                 />
               ))}
-            </div>
+              </div>
+            </>
           )}
         </div>
-        <p>{product.category_name}</p>
-        <strong className="cardPrice">{formatPrice(product.price)}</strong>
+        <div className="cardBody">
+          <h3 className="cardTitle">{product.name}</h3>
+          <p className="cardCategory">{product.category_name}</p>
+          {productCode && <span className="productCode">Urun Kodu: {productCode}</span>}
+        </div>
       </motion.article>
     </Link>
   );
@@ -298,8 +335,12 @@ function DetailPage() {
     setLoading(true);
     Promise.all([fetch(`${API}/products/${id}`).then((r) => r.json()), fetch(`${API}/products`).then((r) => r.json())])
       .then(([detail, all]) => {
-        setProduct(normalizeProduct(detail));
+        const normalizedDetail = normalizeProduct(detail);
+        const defaultColor = normalizedDetail.colors?.find((color) => color.is_default) || normalizedDetail.colors?.[0];
+        setProduct(normalizedDetail);
         setAllProducts(all.map(normalizeProduct));
+        setSelectedColorId(defaultColor?.id ?? "all");
+        setSelected(0);
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -330,9 +371,10 @@ function DetailPage() {
 
   const colors = product.colors || [];
   const activeColor = selectedColorId === "all" ? null : colors.find((c) => String(c.id) === String(selectedColorId));
-  const images = activeColor ? activeColor.images || [] : product.images || [];
+  const images = activeColor ? activeColor.images?.length ? activeColor.images : product.images || [] : product.images || [];
   const similar = allProducts.filter((item) => item.id !== product.id && item.category_id === product.category_id).slice(0, 4);
-  const visibleSizes = activeColor ? activeColor.sizes || [] : [];
+  const visibleSizes = activeColor ? activeColor.sizes || [] : product.sizes || [];
+  const showColorPicker = colors.length > 1;
 
   return (
     <>
@@ -400,13 +442,14 @@ function DetailPage() {
           <p>{product.description}</p>
           <strong className="detailPrice">{formatPrice(product.price)}</strong>
           <span className="catTag">{product.category_name}</span>
-          {colors.length > 0 && (
-            <div className="colorRow">
+          {showColorPicker && (
+            <div className="colorPanel">
+              <span className="optionLabel">Renk secimi</span>
+              <div className="colorRow">
               {colors.map((color) => (
                 <button
                   key={color.id}
-                  className={`colorSwatch ${String(selectedColorId) === String(color.id) ? "active" : ""}`}
-                  style={{ backgroundColor: colorHexOrFallback(color) }}
+                  className={`colorChoice ${String(selectedColorId) === String(color.id) ? "active" : ""}`}
                   title={color.color_name}
                   aria-label={color.color_name}
                   onClick={() => {
@@ -414,29 +457,45 @@ function DetailPage() {
                     setSelected(0);
                     emblaApi?.scrollTo(0);
                   }}
-                />
+                >
+                  <span className="colorSwatch" style={{ backgroundColor: colorHexOrFallback(color) }} />
+                  {color.color_name}
+                </button>
               ))}
               <button
                 className={`colorPill ${selectedColorId === "all" ? "active" : ""}`}
-                onClick={() => setSelectedColorId("all")}
+                onClick={() => {
+                  setSelectedColorId("all");
+                  setSelected(0);
+                  emblaApi?.scrollTo(0);
+                }}
                 title="Tum gorseller"
               >
                 Tumu
               </button>
+              </div>
             </div>
           )}
-          {activeColor && (
+          {!showColorPicker && colors[0] && (
+            <span className="colorLabel">{colors[0].color_name}</span>
+          )}
+          {showColorPicker && activeColor && (
             <span className="colorLabel">{activeColor.color_name}</span>
           )}
           <div className="sizes">
-            {selectedColorId === "all" && <span>Renk seciniz</span>}
-            {selectedColorId !== "all" && visibleSizes.map((size) => (
+            {visibleSizes.map((size) => (
               <span key={size.id} className={size.stock_quantity === 0 ? "off" : ""}>
                 {size.size_label} - {statusText(size)}
               </span>
             ))}
           </div>
-          <a className="cta" href="https://www.instagram.com/butikyazma/" target="_blank" rel="noreferrer">Siparis icin DM</a>
+          <div className="contactCta">
+            <span className="optionLabel">Siparis icin yazin</span>
+            <div className="contactButtons">
+              <a className="cta whatsapp" href="https://wa.me/" target="_blank" rel="noreferrer">WhatsApp'tan Sor</a>
+              <a className="cta instagram" href="https://www.instagram.com/butikyazma/" target="_blank" rel="noreferrer"><InstagramIcon /> Instagram'dan Sor</a>
+            </div>
+          </div>
         </article>
       </section>
       {zoomOpen && (
