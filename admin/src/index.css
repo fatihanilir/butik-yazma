@@ -33,6 +33,8 @@ body { margin: 0; font-family: Inter, sans-serif; background: #f3f4f8; color: #1
 .sizeGrid input { border: 1px solid #d7dbe3; border-radius: 8px; padding: 7px; }
 .sizeGrid .low { background: #fff6db; }
 .sizeGrid .soldout { background: #ffe8e8; text-decoration: line-through; }
+.sizeGrid .disabledSize { opacity: .45; background: #eef0f4; text-decoration: none; }
+.sizeGrid .disabledSize input { cursor: not-allowed; background: #e4e7ee; color: #8a92a0; }
 .modalBack { position: fixed; inset: 0; background: rgba(0,0,0,.38); display: grid; place-items: center; padding: 20px; z-index: 30; }
 .modal { width: min(980px, 96vw); max-height: 94vh; overflow: auto; background: #fff; border-radius: 14px; padding: 18px; display: grid; gap: 10px; }
 .modal.narrow { width: min(520px, 96vw); }

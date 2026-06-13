@@ -3,6 +3,58 @@ import { useEffect, useMemo, useState } from "react";
 const API = import.meta.env.VITE_API_URL ?? "";
 const SIZE_OPTIONS = ["Standart", "M", "L"];
 const PLACEHOLDER = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><rect width='100%' height='100%' fill='%23f1e8ea'/><text x='50%' y='50%' text-anchor='middle' dominant-baseline='middle' fill='%238b5e6b' font-size='18'>Butik Yazma</text></svg>";
+const STANDARD_SIZE = "Standart";
+const LETTER_SIZE_OPTIONS = ["M", "L"];
+
+function sizeValue(value) {
+  const parsed = Number(value || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function hasStandardStock(sizes) {
+  return sizeValue(sizes?.[STANDARD_SIZE]) > 0;
+}
+
+function hasLetterStock(sizes) {
+  return LETTER_SIZE_OPTIONS.some((size) => sizeValue(sizes?.[size]) > 0);
+}
+
+function normalizeExclusiveSizes(sizes) {
+  const next = { ...sizes };
+  if (hasLetterStock(next)) next[STANDARD_SIZE] = 0;
+  else if (hasStandardStock(next)) LETTER_SIZE_OPTIONS.forEach((size) => { next[size] = 0; });
+  return next;
+}
+
+function updateExclusiveSizes(sizes, size, value) {
+  const next = { ...sizes, [size]: value };
+  if (value > 0 && size === STANDARD_SIZE) {
+    LETTER_SIZE_OPTIONS.forEach((item) => { next[item] = 0; });
+  }
+  if (value > 0 && LETTER_SIZE_OPTIONS.includes(size)) {
+    next[STANDARD_SIZE] = 0;
+  }
+  return next;
+}
+
+function isSizeDisabled(size, sizes) {
+  if (size === STANDARD_SIZE) return hasLetterStock(sizes);
+  return LETTER_SIZE_OPTIONS.includes(size) && hasStandardStock(sizes);
+}
+
+function exclusiveSizePayload(sizes) {
+  const normalized = normalizeExclusiveSizes(sizes);
+  const activeSizes = hasLetterStock(normalized)
+    ? LETTER_SIZE_OPTIONS
+    : hasStandardStock(normalized)
+      ? [STANDARD_SIZE]
+      : SIZE_OPTIONS;
+
+  return activeSizes.map((size) => ({
+    size_label: size,
+    stock_quantity: sizeValue(normalized[size]),
+  }));
+}
 
 function createColorBlock(index = 0) {
   return {
@@ -118,8 +170,12 @@ export default function App() {
       const stock = {};
       normalizedProducts.forEach((product) => {
         stock[product.id] = {};
-        product.sizes.forEach((size) => {
-          stock[product.id][size.id] = size.stock_quantity;
+        (product.colors?.length ? product.colors : [{ sizes: product.sizes }]).forEach((color) => {
+          const values = Object.fromEntries((color.sizes || []).map((size) => [size.size_label, size.stock_quantity]));
+          const normalizedValues = normalizeExclusiveSizes(values);
+          (color.sizes || []).forEach((size) => {
+            stock[product.id][size.id] = normalizedValues[size.size_label] ?? size.stock_quantity;
+          });
         });
       });
       setStockDraft(stock);
@@ -196,7 +252,7 @@ export default function App() {
         color_hex: color.color_hex || "",
         sort_order: color.sort_order ?? index,
         is_default: Boolean(color.is_default),
-        sizes,
+        sizes: normalizeExclusiveSizes(sizes),
         images: [...(color.images || [])].sort((a, b) => a.sort_order - b.sort_order),
       };
     });
@@ -250,6 +306,45 @@ export default function App() {
     });
   }
 
+  function setProductFormSize(colorIndex, size, value) {
+    setProductForm((prev) => {
+      const colors = [...prev.colors];
+      colors[colorIndex] = {
+        ...colors[colorIndex],
+        sizes: updateExclusiveSizes(colors[colorIndex].sizes, size, value),
+      };
+      return { ...prev, colors };
+    });
+  }
+
+  function colorStockValues(productId, color) {
+    return Object.fromEntries(
+      (color.sizes || []).map((size) => [
+        size.size_label,
+        stockDraft[productId]?.[size.id] ?? size.stock_quantity,
+      ])
+    );
+  }
+
+  function setStockDraftSize(productId, color, changedSize, value) {
+    setStockDraft((prev) => {
+      const nextProductStock = { ...(prev[productId] || {}) };
+      nextProductStock[changedSize.id] = value;
+
+      if (value > 0 && changedSize.size_label === STANDARD_SIZE) {
+        (color.sizes || []).forEach((size) => {
+          if (LETTER_SIZE_OPTIONS.includes(size.size_label)) nextProductStock[size.id] = 0;
+        });
+      }
+      if (value > 0 && LETTER_SIZE_OPTIONS.includes(changedSize.size_label)) {
+        const standard = (color.sizes || []).find((size) => size.size_label === STANDARD_SIZE);
+        if (standard) nextProductStock[standard.id] = 0;
+      }
+
+      return { ...prev, [productId]: nextProductStock };
+    });
+  }
+
   async function saveProduct(e) {
     e.preventDefault();
     if (!productForm.colors.length) return showToast("error", "En az 1 renk zorunludur.");
@@ -271,7 +366,7 @@ export default function App() {
         sort_order: colorIndex,
         is_default: color.is_default,
         images: color.images.map((img, i) => ({ ...img, sort_order: i, is_primary: color.is_default && i === 0 })),
-        sizes: SIZE_OPTIONS.map((size) => ({ size_label: size, stock_quantity: Number(color.sizes[size] || 0) })),
+        sizes: exclusiveSizePayload(color.sizes),
       })),
     };
     try {
@@ -489,8 +584,10 @@ export default function App() {
                         <h5>Renk: {color.color_name}</h5>
                         <div className="sizeGrid">
                           {(color.sizes || []).map((size) => {
+                        const stockValues = colorStockValues(product.id, color);
                         const value = stockDraft[product.id]?.[size.id] ?? size.stock_quantity;
-                        const cls = value === 0 ? "soldout" : value <= 2 ? "low" : "";
+                        const disabled = isSizeDisabled(size.size_label, stockValues);
+                        const cls = disabled ? "disabledSize" : value === 0 ? "soldout" : value <= 2 ? "low" : "";
                         return (
                           <label key={size.id} className={cls}>
                             {size.size_label}
@@ -498,10 +595,8 @@ export default function App() {
                               type="number"
                               min="0"
                               value={value}
-                              onChange={(e) => setStockDraft((prev) => ({
-                                ...prev,
-                                [product.id]: { ...(prev[product.id] || {}), [size.id]: Number(e.target.value) },
-                              }))}
+                              disabled={disabled}
+                              onChange={(e) => setStockDraftSize(product.id, color, size, Number(e.target.value))}
                             />
                           </label>
                         );
@@ -618,20 +713,14 @@ export default function App() {
                 </div>
                 <div className="sizeGrid">
                   {SIZE_OPTIONS.map((size) => (
-                    <label key={`${colorIndex}-${size}`}>
+                    <label key={`${colorIndex}-${size}`} className={isSizeDisabled(size, color.sizes) ? "disabledSize" : ""}>
                       {size}
                       <input
                         type="number"
                         min="0"
                         value={color.sizes[size]}
-                        onChange={(e) => setProductForm((prev) => {
-                          const colors = [...prev.colors];
-                          colors[colorIndex] = {
-                            ...colors[colorIndex],
-                            sizes: { ...colors[colorIndex].sizes, [size]: Number(e.target.value) },
-                          };
-                          return { ...prev, colors };
-                        })}
+                        disabled={isSizeDisabled(size, color.sizes)}
+                        onChange={(e) => setProductFormSize(colorIndex, size, Number(e.target.value))}
                       />
                     </label>
                   ))}

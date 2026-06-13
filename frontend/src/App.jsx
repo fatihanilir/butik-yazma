@@ -98,6 +98,18 @@ function statusText(size) {
   return "Stokta";
 }
 
+function visibleSizeGroup(sizes = []) {
+  const standardSizes = sizes.filter((size) => size.size_label === "Standart");
+  const letterSizes = sizes.filter((size) => ["M", "L"].includes(size.size_label));
+  const hasStandardStock = standardSizes.some((size) => size.stock_quantity > 0);
+  const hasLetterStock = letterSizes.some((size) => size.stock_quantity > 0);
+
+  if (hasLetterStock) return letterSizes;
+  if (hasStandardStock) return standardSizes;
+  if (letterSizes.length) return letterSizes;
+  return sizes;
+}
+
 function InstagramIcon() {
   return (
     <svg className="socialIcon" viewBox="0 0 24 24" aria-hidden="true">
@@ -373,7 +385,7 @@ function DetailPage() {
   const activeColor = selectedColorId === "all" ? null : colors.find((c) => String(c.id) === String(selectedColorId));
   const images = activeColor ? activeColor.images?.length ? activeColor.images : product.images || [] : product.images || [];
   const similar = allProducts.filter((item) => item.id !== product.id && item.category_id === product.category_id).slice(0, 4);
-  const visibleSizes = activeColor ? activeColor.sizes || [] : product.sizes || [];
+  const visibleSizes = visibleSizeGroup(activeColor ? activeColor.sizes || [] : product.sizes || []);
   const showColorPicker = colors.length > 1;
 
   return (
