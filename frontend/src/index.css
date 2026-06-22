@@ -261,6 +261,7 @@ button, input, select { font: inherit; }
 .sizes { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 8px; }
 .sizes span { border: 1px solid var(--border); background: #fff; color: var(--plum-dark); border-radius: 999px; padding: 7px 11px; font-size: .78rem; font-weight: 800; }
 .sizes span.off { opacity: .48; text-decoration: line-through; }
+.sizeHint { border: 1px dashed var(--border); background: transparent; color: var(--muted); font-weight: 600; }
 .contactCta { width: 100%; margin-top: 6px; display: grid; gap: 10px; }
 .contactButtons { display: grid; grid-template-columns: 1fr; gap: 10px; }
 .cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 16px; padding: 13px 16px; color: #fff; cursor: pointer; font-weight: 800; box-shadow: 0 14px 28px rgba(78,38,52,.16); transition: transform .2s ease, box-shadow .2s ease; }

@@ -363,11 +363,14 @@ function DetailPage() {
   }, [emblaApi]);
 
   useEffect(() => {
-    if (selected > 0 && selected >= (activeColor ? activeColor.images?.length || 0 : product?.images?.length || 0)) {
+    if (!product) return;
+    const color = selectedColorId === "all" ? null : product.colors?.find((c) => String(c.id) === String(selectedColorId));
+    const imageList = color?.images?.length ? color.images : product.images || [];
+    if (selected > 0 && selected >= imageList.length) {
       setSelected(0);
       emblaApi?.scrollTo(0);
     }
-  }, [selectedColorId]);
+  }, [selectedColorId, product, selected, emblaApi]);
 
   useEffect(() => {
     if (!zoomOpen) return undefined;
@@ -385,8 +388,9 @@ function DetailPage() {
   const activeColor = selectedColorId === "all" ? null : colors.find((c) => String(c.id) === String(selectedColorId));
   const images = activeColor ? activeColor.images?.length ? activeColor.images : product.images || [] : product.images || [];
   const similar = allProducts.filter((item) => item.id !== product.id && item.category_id === product.category_id).slice(0, 4);
-  const visibleSizes = visibleSizeGroup(activeColor ? activeColor.sizes || [] : product.sizes || []);
   const showColorPicker = colors.length > 1;
+  const showSizes = selectedColorId !== "all" && activeColor;
+  const visibleSizes = showSizes ? visibleSizeGroup(activeColor.sizes || []) : [];
 
   return (
     <>
@@ -495,6 +499,9 @@ function DetailPage() {
             <span className="colorLabel">{activeColor.color_name}</span>
           )}
           <div className="sizes">
+            {selectedColorId === "all" && showColorPicker && (
+              <span className="sizeHint">Beden bilgisi icin renk seciniz</span>
+            )}
             {visibleSizes.map((size) => (
               <span key={size.id} className={size.stock_quantity === 0 ? "off" : ""}>
                 {size.size_label} - {statusText(size)}
