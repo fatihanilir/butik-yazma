@@ -72,8 +72,8 @@ button, input, select { font: inherit; }
   border-radius: 999px;
   background: rgba(122, 135, 100, .12);
 }
-.hero p { margin: 0 0 7px; color: var(--muted); font-size: .92rem; letter-spacing: .08em; text-transform: uppercase; }
-.hero h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; color: var(--text-heading); font-size: clamp(2rem, 6vw, 4.2rem); line-height: .98; max-width: 760px; }
+.hero p { margin: 0 0 7px; color: var(--muted); font-size: .82rem; letter-spacing: .06em; }
+.hero h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; color: var(--text-heading); font-size: clamp(1.65rem, 4.8vw, 3.35rem); line-height: 1.02; max-width: 760px; }
 
 .filters {
   display: grid;

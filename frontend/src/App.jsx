@@ -332,8 +332,8 @@ function HomePage() {
   return (
     <>
       <motion.section className="hero" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-        <p>Zarif ve modern kadin butik koleksiyonu</p>
-        <h2>Sezonun one cikan elbiseleri</h2>
+        <p>YAZIN ENERJİSİNİ TAŞIYAN OTANTİK TASARIMLAR</p>
+        <h2>Rahat, renkli ve özgür...</h2>
       </motion.section>
       <section className="filters">
         <div className="searchRow">
