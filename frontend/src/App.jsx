@@ -110,6 +110,28 @@ function visibleSizeGroup(sizes = []) {
   return sizes;
 }
 
+function isSoldOut(sizes = []) {
+  if (!sizes.length) return false;
+  return !sizes.some((size) => size.stock_quantity > 0);
+}
+
+function colorForImage(image, colors = []) {
+  if (!image) return null;
+  if (image.color_id != null) {
+    return colors.find((color) => String(color.id) === String(image.color_id)) || null;
+  }
+  return colors.find((color) => color.images?.some((img) => String(img.id) === String(image.id))) || null;
+}
+
+function gallerySoldOut({ colors, activeColor, showColorPicker, images, selectedIndex, productSizes }) {
+  if (activeColor) return isSoldOut(activeColor.sizes);
+  if (!showColorPicker) return isSoldOut(productSizes);
+  const currentImage = images[selectedIndex ?? 0];
+  const imageColor = colorForImage(currentImage, colors);
+  if (imageColor) return isSoldOut(imageColor.sizes);
+  return isSoldOut(productSizes);
+}
+
 function InstagramIcon() {
   return (
     <svg className="socialIcon" viewBox="0 0 24 24" aria-hidden="true">
@@ -391,6 +413,14 @@ function DetailPage() {
   const showColorPicker = colors.length > 1;
   const showSizes = selectedColorId !== "all" && activeColor;
   const visibleSizes = showSizes ? visibleSizeGroup(activeColor.sizes || []) : [];
+  const showSoldOutBadge = gallerySoldOut({
+    colors,
+    activeColor,
+    showColorPicker,
+    images,
+    selectedIndex: selected,
+    productSizes: product.sizes,
+  });
 
   return (
     <>
@@ -422,6 +452,7 @@ function DetailPage() {
                 </button>
               </>
             )}
+            {showSoldOutBadge && <span className="badge">Tukendi</span>}
             <button className="overlayZoom" onClick={() => setZoomOpen(true)} aria-label="Gorseli buyut">
               🔍
             </button>
