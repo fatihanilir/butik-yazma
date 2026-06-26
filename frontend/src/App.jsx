@@ -22,10 +22,14 @@ function toNumberOrNull(value) {
 }
 
 function formatPrice(value) {
-  if (value === null || value === undefined || value === "") return "Fiyat sorunuz";
+  if (value === null || value === undefined || value === "") return "Toptan alım için fiyat sorunuz.";
   let num = Number(value);
   if (!Number.isFinite(num)) num = 0;
   return `${num.toLocaleString("tr-TR")} TL`;
+}
+
+function hasListedPrice(value) {
+  return value !== null && value !== undefined && value !== "";
 }
 
 function normalizeSize(size) {
@@ -421,6 +425,7 @@ function DetailPage() {
     selectedIndex: selected,
     productSizes: product.sizes,
   });
+  const listedPrice = hasListedPrice(product.price);
 
   return (
     <>
@@ -542,7 +547,11 @@ function DetailPage() {
           <div className="contactCta">
             <span className="optionLabel">Siparis icin yazin</span>
             <div className="contactButtons">
-              <a className="cta whatsapp" href="https://wa.me/" target="_blank" rel="noreferrer">WhatsApp'tan Sor</a>
+              {listedPrice ? (
+                <a className="cta whatsapp" href="https://wa.me/" target="_blank" rel="noreferrer">WhatsApp'tan Sor</a>
+              ) : (
+                <button className="cta whatsapp" type="button" disabled>WhatsApp'tan Sor</button>
+              )}
               <a className="cta instagram" href="https://www.instagram.com/butikyazma/" target="_blank" rel="noreferrer"><InstagramIcon /> Instagram'dan Sor</a>
             </div>
           </div>
