@@ -278,6 +278,15 @@ button, input, select { font: inherit; }
 .zoomClose { position: sticky; top: 0; margin-left: auto; border: 0; background: var(--accent-dark); color: #fff; border-radius: 999px; width: 38px; height: 38px; cursor: pointer; z-index: 2; }
 .zoomModal img { max-width: 92vw; max-height: 88vh; width: auto; height: auto; object-fit: contain; border-radius: 14px; }
 .footer { margin: 24px 0 8px; padding-top: 16px; border-top: 1px solid var(--border); justify-content: center; }
+.aiDisclaimer {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: .8rem;
+  line-height: 1.5;
+  text-align: center;
+}
+.aiDisclaimerBottom { margin: 18px 0 4px; }
+.gallery .aiDisclaimer { margin: 10px 2px 0; text-align: left; font-size: .78rem; }
 
 @media (min-width: 768px) {
   .page { padding: 18px; }

@@ -353,7 +353,9 @@ function HomePage() {
       {loading && <div className="state">Yukleniyor...</div>}
       {error && <div className="state error">{error}</div>}
       {!loading && !error && !products.length && <div className="state">Urun bulunamadi.</div>}
+      <p className="aiDisclaimer">Görsellerde yapay zekâ ile oluşturulmuş dijital model kullanılmıştır.</p>
       <section className="grid">{products.map((product) => <ProductCard key={product.id} product={product} />)}</section>
+      <p className="aiDisclaimer aiDisclaimerBottom">Görsellerde yapay zekâ ile oluşturulmuş dijital model kullanılmıştır.</p>
     </>
   );
 }
@@ -488,6 +490,7 @@ function DetailPage() {
               ))}
             </div>
           )}
+          <p className="aiDisclaimer">Bu görselde yapay zekâ ile oluşturulmuş dijital model kullanılmıştır.</p>
         </div>
         <article className="detailInfo">
           <h2 className="detailDesktopTitle">{product.name}</h2>
