@@ -234,7 +234,7 @@ app.get("/products", async (req, res) => {
     values.push(`%${search}%`);
     clauses.push(`(p.product_code ilike $${values.length} or cast(p.id as text) ilike $${values.length} or p.name ilike $${values.length} or c.name ilike $${values.length})`);
   }
-  const order = sort === "price_asc" ? "p.price asc" : sort === "price_desc" ? "p.price desc" : "p.created_at desc";
+  const order = sort === "price_asc" ? "p.price asc nulls last" : sort === "price_desc" ? "p.price desc nulls last" : "p.sort_order asc, p.id asc";
   const base = await query(
     `select p.*, c.name as category_name, c.slug as category_slug,
       coalesce((select url from product_images pi where pi.product_id=p.id and pi.is_primary=true order by pi.sort_order asc limit 1),
@@ -284,7 +284,7 @@ app.get("/admin/products", authRequired, async (_req, res) => {
       coalesce((select url from product_images pi where pi.product_id=p.id and pi.is_primary=true order by pi.sort_order asc limit 1),
       (select url from product_images pi where pi.product_id=p.id order by pi.sort_order asc limit 1)) as primary_image,
       coalesce((select sum(stock_quantity) from product_sizes ps where ps.product_id=p.id),0)::int as stock_total
-      from products p join categories c on c.id=p.category_id order by p.created_at desc`
+      from products p join categories c on c.id=p.category_id order by p.sort_order asc, p.id asc`
   );
   res.json(await buildProducts(base.rows));
 });
@@ -363,7 +363,8 @@ app.post("/admin/products", authRequired, async (req, res) => {
   const validationError = validateColorPayload(colors);
   if (validationError) return res.status(400).json({ message: validationError });
   const product = await query(
-    "insert into products(name,description,price,category_id,status,product_code) values($1,$2,$3,$4,$5,$6) returning *",
+    `insert into products(name,description,price,category_id,status,product_code,sort_order)
+     values($1,$2,$3,$4,$5,$6,coalesce((select max(sort_order) + 1 from products), 0)) returning *`,
     [name, description, normalizePrice(price), category_id, status, product_code || null]
   );
   await saveProductColors(product.rows[0].id, name, colors);
@@ -415,6 +416,25 @@ app.delete("/admin/products/:id/images/:imageId", authRequired, async (req, res)
     );
   }
   res.status(204).send();
+});
+
+app.patch("/admin/products/reorder", authRequired, async (req, res) => {
+  const order = req.body.order;
+  if (!Array.isArray(order) || !order.length) {
+    return res.status(400).json({ message: "Gecerli bir urun sirasi gonderin." });
+  }
+  const ids = order.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0);
+  if (ids.length !== order.length) {
+    return res.status(400).json({ message: "Gecersiz urun listesi." });
+  }
+  const existing = await query("select id from products where id = any($1::int[])", [ids]);
+  if (existing.rows.length !== ids.length) {
+    return res.status(400).json({ message: "Bazi urunler bulunamadi." });
+  }
+  for (let index = 0; index < ids.length; index += 1) {
+    await query("update products set sort_order=$1, updated_at=now() where id=$2", [index, ids[index]]);
+  }
+  res.json({ ok: true });
 });
 
 app.patch("/admin/products/:id/stock", authRequired, async (req, res) => {

@@ -12,6 +12,7 @@ body { margin: 0; font-family: Inter, sans-serif; background: #f3f4f8; color: #1
 .content { padding: 20px; }
 .sectionHead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .sectionHead h3 { margin: 0; }
+.sectionHint { margin: 4px 0 0; color: #6e7687; font-size: .84rem; max-width: 620px; }
 .sectionHead button, .actions button, .modal button, .content button { border: 0; background: #8b5e6b; color: #fff; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
 .danger { background: #e05757 !important; }
 .cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
@@ -21,8 +22,14 @@ body { margin: 0; font-family: Inter, sans-serif; background: #f3f4f8; color: #1
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .panel { background: #fff; border-radius: 12px; padding: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.08); }
 .table { display: grid; gap: 8px; }
-.thead, .row { display: grid; grid-template-columns: 70px 1.4fr .8fr 1fr .8fr .7fr .7fr .7fr 1.3fr; gap: 10px; align-items: center; background: #fff; border-radius: 10px; padding: 10px; }
+.thead, .row { display: grid; grid-template-columns: 84px 70px 1.3fr .8fr 1fr .8fr .7fr .7fr .7fr 1.2fr; gap: 10px; align-items: center; background: #fff; border-radius: 10px; padding: 10px; }
 .thead { font-weight: 600; color: #52586b; }
+.row.dragging { opacity: .55; outline: 2px dashed #8b5e6b; }
+.reorderCell { display: grid; gap: 6px; justify-items: center; }
+.dragHandle { cursor: grab; color: #8a92a0; font-size: .9rem; user-select: none; line-height: 1; }
+.reorderBtns { display: flex; gap: 4px; }
+.reorderBtns button { min-width: 30px; padding: 4px 6px !important; font-size: .85rem; line-height: 1; background: #eef0f4 !important; color: #3a4252 !important; }
+.reorderBtns button:disabled { opacity: .35; cursor: not-allowed; }
 .row img { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .categoryCard, .stockCard { background: #fff; border-radius: 12px; padding: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.08); margin-bottom: 10px; }
@@ -60,6 +67,6 @@ body { margin: 0; font-family: Inter, sans-serif; background: #f3f4f8; color: #1
 @media (max-width: 1080px) {
   .cards { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .split { grid-template-columns: 1fr; }
-  .thead, .row { grid-template-columns: 60px 1.5fr 1fr 1fr 1fr; }
-  .thead span:nth-child(7), .thead span:nth-child(8), .thead span:nth-child(9), .row span:nth-child(7), .row span:nth-child(8), .row .actions { grid-column: span 2; }
+  .thead, .row { grid-template-columns: 72px 60px 1.5fr 1fr 1fr 1fr; }
+  .thead span:nth-child(7), .thead span:nth-child(8), .thead span:nth-child(9), .thead span:nth-child(10), .row span:nth-child(7), .row span:nth-child(8), .row span:nth-child(9), .row .actions { grid-column: span 2; }
 }

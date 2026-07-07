@@ -110,6 +110,8 @@ export default function App() {
   const [categoryForm, setCategoryForm] = useState({ id: null, name: "", description: "", sort_order: 0, is_active: true });
   const [confirm, setConfirm] = useState({ open: false, title: "", message: "", onConfirm: null });
   const [dragIndex, setDragIndex] = useState(null);
+  const [productDragIndex, setProductDragIndex] = useState(null);
+  const [reorderSaving, setReorderSaving] = useState(false);
   const [stockDraft, setStockDraft] = useState({});
 
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}`, "Content-Type": "application/json" }), [token]);
@@ -157,13 +159,15 @@ export default function App() {
         fetchAuthed(`${API}/admin/products`),
         fetchAuthed(`${API}/admin/categories`),
       ]);
-      const normalizedProducts = p.map((product) => ({
-        ...product,
-        images: (product.images || []).map((image) => ({ ...image, url: normalizeImageUrl(image.url) })),
-        primaryImage: normalizeImageUrl(
-          product.primaryImage || product.images?.find((i) => i.is_primary)?.url || product.images?.[0]?.url
-        ),
-      }));
+      const normalizedProducts = p
+        .map((product) => ({
+          ...product,
+          images: (product.images || []).map((image) => ({ ...image, url: normalizeImageUrl(image.url) })),
+          primaryImage: normalizeImageUrl(
+            product.primaryImage || product.images?.find((i) => i.is_primary)?.url || product.images?.[0]?.url
+          ),
+        }))
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id - b.id);
       setDashboard(d);
       setProducts(normalizedProducts);
       setCategories(c);
@@ -473,6 +477,40 @@ export default function App() {
     }
   }
 
+  async function persistProductOrder(nextProducts) {
+    setReorderSaving(true);
+    try {
+      await fetchAuthed(`${API}/admin/products/reorder`, {
+        method: "PATCH",
+        body: JSON.stringify({ order: nextProducts.map((product) => product.id) }),
+      });
+      setProducts(nextProducts.map((product, index) => ({ ...product, sort_order: index })));
+      showToast("success", "Katalog sirasi guncellendi.");
+    } catch (err) {
+      showToast("error", parseError(err, "Siralama kaydedilemedi."));
+      loadData();
+    } finally {
+      setReorderSaving(false);
+    }
+  }
+
+  function moveProduct(index, direction) {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= products.length) return;
+    const next = [...products];
+    const [item] = next.splice(index, 1);
+    next.splice(targetIndex, 0, item);
+    persistProductOrder(next);
+  }
+
+  function moveProductDrag(from, to) {
+    if (from === to || from === null || to === null) return;
+    const next = [...products];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    persistProductOrder(next);
+  }
+
   if (!token) {
     return (
       <form className="login" onSubmit={login}>
@@ -521,18 +559,43 @@ export default function App() {
         )}
         {!loading && !error && menu === "urunler" && (
           <section>
-            <div className="sectionHead"><h3>Urunler</h3><button onClick={openCreateProduct}>Yeni urun</button></div>
+            <div className="sectionHead">
+              <div>
+                <h3>Urunler</h3>
+                <p className="sectionHint">Katalogdaki gorunum sirasini surukle-birak veya oklarla duzenleyin. Ustteki urunler musteri sayfasinda once gorunur.</p>
+              </div>
+              <button onClick={openCreateProduct}>Yeni urun</button>
+            </div>
             {!products.length ? <p className="empty">Urun bulunamadi.</p> : (
               <div className="table">
-                <div className="thead"><span>Gorsel</span><span>Ad</span><span>Kod</span><span>Kategori</span><span>Fiyat</span><span>Durum</span><span>Renk</span><span>Stok</span><span>Islem</span></div>
-                {products.map((product) => {
+                <div className="thead"><span>Sira</span><span>Gorsel</span><span>Ad</span><span>Kod</span><span>Kategori</span><span>Fiyat</span><span>Durum</span><span>Renk</span><span>Stok</span><span>Islem</span></div>
+                {products.map((product, index) => {
                   const imgSrc = normalizeImageUrl(
                     product.primaryImage || product.images?.find((i) => i.is_primary)?.url || product.images?.[0]?.url
                   );
-                  console.log("[admin.product-list.img]", { id: product.id, primaryImage: product.primaryImage, imgSrc });
                   const stockSum = product.sizes.reduce((sum, size) => sum + size.stock_quantity, 0);
                   return (
-                    <div className="row" key={product.id}>
+                    <div
+                      className={`row ${productDragIndex === index ? "dragging" : ""}`}
+                      key={product.id}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={() => {
+                        if (productDragIndex !== null) moveProductDrag(productDragIndex, index);
+                        setProductDragIndex(null);
+                      }}
+                    >
+                      <div
+                        className="reorderCell"
+                        draggable={!reorderSaving}
+                        onDragStart={() => setProductDragIndex(index)}
+                        onDragEnd={() => setProductDragIndex(null)}
+                      >
+                        <span className="dragHandle" title="Surukle">⋮⋮</span>
+                        <div className="reorderBtns">
+                          <button type="button" disabled={index === 0 || reorderSaving} onClick={() => moveProduct(index, "up")} aria-label="Yukari tasi">↑</button>
+                          <button type="button" disabled={index === products.length - 1 || reorderSaving} onClick={() => moveProduct(index, "down")} aria-label="Asagi indir">↓</button>
+                        </div>
+                      </div>
                       <img src={imgSrc} alt="" />
                       <span>{product.name}</span>
                       <span>{product.product_code || "-"}</span>
