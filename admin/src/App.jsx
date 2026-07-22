@@ -110,6 +110,7 @@ export default function App() {
   const [categoryForm, setCategoryForm] = useState({ id: null, name: "", description: "", sort_order: 0, is_active: true });
   const [confirm, setConfirm] = useState({ open: false, title: "", message: "", onConfirm: null });
   const [imageDrag, setImageDrag] = useState(null);
+  const [colorDragIndex, setColorDragIndex] = useState(null);
   const [productDragIndex, setProductDragIndex] = useState(null);
   const [reorderSaving, setReorderSaving] = useState(false);
   const [stockDraft, setStockDraft] = useState({});
@@ -248,7 +249,7 @@ export default function App() {
   }
 
   function openEditProduct(product) {
-    const colors = (product.colors?.length ? product.colors : [createColorBlock(0)]).map((color, index) => {
+    const colors = (product.colors?.length ? [...product.colors].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)) : [createColorBlock(0)]).map((color, index) => {
       const sizes = Object.fromEntries(SIZE_OPTIONS.map((size) => [size, 0]));
       (color.sizes || []).forEach((row) => {
         sizes[row.size_label] = row.stock_quantity;
@@ -356,6 +357,24 @@ export default function App() {
       }
 
       return { ...prev, [productId]: nextProductStock };
+    });
+  }
+
+  function moveColorStep(colorIndex, direction) {
+    const targetIndex = direction === "up" ? colorIndex - 1 : colorIndex + 1;
+    if (targetIndex < 0 || targetIndex >= productForm.colors.length) return;
+    moveColor(colorIndex, targetIndex);
+  }
+
+  function moveColor(from, to) {
+    setProductForm((prev) => {
+      const colors = [...prev.colors];
+      const [item] = colors.splice(from, 1);
+      colors.splice(to, 0, item);
+      return {
+        ...prev,
+        colors: colors.map((color, idx) => ({ ...color, sort_order: idx })),
+      };
     });
   }
 
@@ -710,6 +729,7 @@ export default function App() {
 
             <div className="dropzone" onDrop={onDropImages} onDragOver={(e) => e.preventDefault()}>
               <p>Renkleri asagidan yonetin ve her renk icin gorsel/stok girin.</p>
+              <p className="imageOrderHint">Renk sirasi musteri sayfasinda ayni sekilde gorunur. Oklar veya surukle-birak ile renkleri yeniden siralar, kaydettikten sonra sitede guncellenir.</p>
             </div>
             <div className="actions">
               <button
@@ -720,7 +740,34 @@ export default function App() {
               </button>
             </div>
             {productForm.colors.map((color, colorIndex) => (
-              <div key={`${color.id || "new"}-${colorIndex}`} className="colorBlock">
+              <div
+                key={color.id || `${color.color_name}-${colorIndex}`}
+                className={`colorBlock ${colorDragIndex === colorIndex ? "dragging" : ""}`}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => {
+                  if (colorDragIndex === null || colorDragIndex === colorIndex) return;
+                  moveColor(colorDragIndex, colorIndex);
+                  setColorDragIndex(null);
+                }}
+              >
+                {productForm.colors.length > 1 && (
+                  <div className="colorBlockHead">
+                    <div
+                      className="colorDragHandle"
+                      draggable
+                      onDragStart={() => setColorDragIndex(colorIndex)}
+                      onDragEnd={() => setColorDragIndex(null)}
+                      title="Renk blogunu surukle"
+                    >
+                      ⋮⋮
+                    </div>
+                    <strong>Renk {colorIndex + 1}</strong>
+                    <div className="colorReorderBtns">
+                      <button type="button" disabled={colorIndex === 0} onClick={() => moveColorStep(colorIndex, "up")} aria-label="Rengi yukari tasi">↑</button>
+                      <button type="button" disabled={colorIndex === productForm.colors.length - 1} onClick={() => moveColorStep(colorIndex, "down")} aria-label="Rengi asagi indir">↓</button>
+                    </div>
+                  </div>
+                )}
                 <div className="columns">
                   <input
                     placeholder="Renk adi"

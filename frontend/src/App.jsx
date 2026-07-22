@@ -48,17 +48,25 @@ function normalizeProduct(product) {
     url: normalizeImageUrl(image?.url),
   }));
 
-  const colors = (Array.isArray(safe.colors) ? safe.colors : []).map((color) => {
-    const safeColor = color && typeof color === "object" ? color : {};
-    return {
-      ...safeColor,
-      images: (Array.isArray(safeColor.images) ? safeColor.images : []).map((img) => ({
-        ...img,
-        url: normalizeImageUrl(img?.url),
-      })),
-      sizes: (Array.isArray(safeColor.sizes) ? safeColor.sizes : []).map(normalizeSize),
-    };
-  });
+  const colors = (Array.isArray(safe.colors) ? safe.colors : [])
+    .map((color) => {
+      const safeColor = color && typeof color === "object" ? color : {};
+      return {
+        ...safeColor,
+        images: (Array.isArray(safeColor.images) ? safeColor.images : [])
+          .map((img) => ({
+            ...img,
+            url: normalizeImageUrl(img?.url),
+          }))
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+        sizes: (Array.isArray(safeColor.sizes) ? safeColor.sizes : []).map(normalizeSize),
+      };
+    })
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || (a.id ?? 0) - (b.id ?? 0));
+
+  const orderedImages = colors.length
+    ? colors.flatMap((color) => color.images || [])
+    : images;
 
   const sizes = (Array.isArray(safe.sizes) ? safe.sizes : []).map(normalizeSize);
 
@@ -68,7 +76,7 @@ function normalizeProduct(product) {
 
   return {
     ...safe,
-    images,
+    images: orderedImages.length ? orderedImages : images,
     colors,
     sizes,
     price: toNumberOrNull(safe.price),
