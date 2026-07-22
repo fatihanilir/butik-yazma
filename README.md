@@ -118,8 +118,8 @@ railway run npm run seed
 
 1. Yeni servis olusturun, **Root Directory**: `frontend`
 2. **Build Command**: `npm install && npm run build`
-3. **Start Command** (static site): `npx serve dist -s -l $PORT`
-   - veya Railway **Static Site** kullanin, output: `dist`
+3. **Start Command**: `npm start`
+   - `index.html` her yenilemede guncellenir; JS/CSS dosyalari hash ile uzun sure cache'lenir
 4. Build-time ortam degiskeni:
 
 ```env
@@ -130,7 +130,7 @@ VITE_API_URL=https://<backend-railway-url>
 
 1. Yeni servis olusturun, **Root Directory**: `admin`
 2. **Build Command**: `npm install && npm run build`
-3. **Start Command**: `npx serve dist -s -l $PORT`
+3. **Start Command**: `npm start`
 4. Build-time ortam degiskeni:
 
 ```env
