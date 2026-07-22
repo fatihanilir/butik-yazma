@@ -109,7 +109,7 @@ export default function App() {
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [categoryForm, setCategoryForm] = useState({ id: null, name: "", description: "", sort_order: 0, is_active: true });
   const [confirm, setConfirm] = useState({ open: false, title: "", message: "", onConfirm: null });
-  const [dragIndex, setDragIndex] = useState(null);
+  const [imageDrag, setImageDrag] = useState(null);
   const [productDragIndex, setProductDragIndex] = useState(null);
   const [reorderSaving, setReorderSaving] = useState(false);
   const [stockDraft, setStockDraft] = useState({});
@@ -209,7 +209,7 @@ export default function App() {
     return data.map((item, index) => ({
       url: normalizeImageUrl(item.url),
       alt_text: productForm.name,
-      sort_order: (color?.images?.length || 0) + index,
+      sort_order: index,
       is_primary: false,
     }));
   }
@@ -228,7 +228,10 @@ export default function App() {
       setProductForm((prev) => {
         const colors = [...prev.colors];
         const target = { ...colors[colorIndex] };
-        const nextImages = [...target.images, ...uploaded];
+        const nextImages = [...uploaded.slice().reverse(), ...target.images].map((img, sort) => ({
+          ...img,
+          sort_order: sort,
+        }));
         if (!nextImages.some((img) => img.is_primary) && nextImages[0]) nextImages[0].is_primary = true;
         target.images = nextImages;
         colors[colorIndex] = target;
@@ -310,6 +313,13 @@ export default function App() {
     });
   }
 
+  function moveImageStep(colorIndex, imageIndex, direction) {
+    const targetIndex = direction === "up" ? imageIndex - 1 : imageIndex + 1;
+    const imageCount = productForm.colors[colorIndex]?.images?.length || 0;
+    if (targetIndex < 0 || targetIndex >= imageCount) return;
+    moveImage(colorIndex, imageIndex, targetIndex);
+  }
+
   function setProductFormSize(colorIndex, size, value) {
     setProductForm((prev) => {
       const colors = [...prev.colors];
@@ -369,7 +379,7 @@ export default function App() {
         color_hex: color.color_hex || null,
         sort_order: colorIndex,
         is_default: color.is_default,
-        images: color.images.map((img, i) => ({ ...img, sort_order: i, is_primary: color.is_default && i === 0 })),
+        images: color.images.map((img, i) => ({ ...img, sort_order: i, is_primary: Boolean(img.is_primary) })),
         sizes: exclusiveSizePayload(color.sizes),
       })),
     };
@@ -745,6 +755,7 @@ export default function App() {
                 </div>
                 <div className="dropzone" onDrop={(e) => onDropImages(e, colorIndex)} onDragOver={(e) => e.preventDefault()}>
                   <p>{color.color_name || `Renk ${colorIndex + 1}`} icin gorsel yukle (max 8)</p>
+                  <p className="imageOrderHint">Yeni yuklenen gorsel en basta gorunur. Ilk gorsel musteri sayfasinda once gosterilir; oklar veya surukle-birak ile sirayi degistirebilirsiniz.</p>
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
@@ -756,18 +767,28 @@ export default function App() {
                   {color.images.map((image, imageIndex) => (
                     <div
                       key={`${image.url}-${imageIndex}`}
-                      className={`thumb ${color.is_default && imageIndex === 0 ? "primary" : ""}`}
-                      draggable
-                      onDragStart={() => setDragIndex(imageIndex)}
+                      className={`thumb ${image.is_primary ? "primary" : ""}`}
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={() => {
-                        if (dragIndex === null || dragIndex === imageIndex) return;
-                        moveImage(colorIndex, dragIndex, imageIndex);
-                        setDragIndex(null);
+                        if (!imageDrag || imageDrag.colorIndex !== colorIndex || imageDrag.imageIndex === imageIndex) return;
+                        moveImage(colorIndex, imageDrag.imageIndex, imageIndex);
+                        setImageDrag(null);
                       }}
                     >
+                      <div
+                        className="thumbDragHandle"
+                        draggable
+                        onDragStart={() => setImageDrag({ colorIndex, imageIndex })}
+                        onDragEnd={() => setImageDrag(null)}
+                        title="Surukle"
+                      >
+                        ⋮⋮
+                      </div>
+                      <span className="thumbOrder">{imageIndex + 1}</span>
                       <img src={normalizeImageUrl(image.url)} alt="" />
                       <div className="actions">
+                        <button type="button" disabled={imageIndex === 0} onClick={() => moveImageStep(colorIndex, imageIndex, "up")} aria-label="Yukari">↑</button>
+                        <button type="button" disabled={imageIndex === color.images.length - 1} onClick={() => moveImageStep(colorIndex, imageIndex, "down")} aria-label="Asagi">↓</button>
                         <button type="button" onClick={() => setPrimaryImage(colorIndex, imageIndex)}>Ana</button>
                         <button type="button" onClick={() => removeImage(colorIndex, imageIndex)}>Sil</button>
                       </div>
