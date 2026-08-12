@@ -56,8 +56,12 @@ function exclusiveSizePayload(sizes) {
   }));
 }
 
+let colorBlockCounter = 0;
+
 function createColorBlock(index = 0) {
+  colorBlockCounter += 1;
   return {
+    clientKey: `color-${Date.now()}-${colorBlockCounter}`,
     id: null,
     color_name: index === 0 ? "Standart" : "",
     color_hex: "",
@@ -255,6 +259,7 @@ export default function App() {
         sizes[row.size_label] = row.stock_quantity;
       });
       return {
+        clientKey: color.clientKey || (color.id ? `color-id-${color.id}` : `color-edit-${index}`),
         id: color.id,
         color_name: color.color_name || (index === 0 ? "Standart" : ""),
         color_hex: color.color_hex || "",
@@ -741,7 +746,7 @@ export default function App() {
             </div>
             {productForm.colors.map((color, colorIndex) => (
               <div
-                key={color.id || `${color.color_name}-${colorIndex}`}
+                key={color.id ?? color.clientKey}
                 className={`colorBlock ${colorDragIndex === colorIndex ? "dragging" : ""}`}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => {
