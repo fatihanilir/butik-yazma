@@ -384,10 +384,9 @@ function DetailPage() {
     Promise.all([fetch(`${API}/products/${id}`).then((r) => r.json()), fetch(`${API}/products`).then((r) => r.json())])
       .then(([detail, all]) => {
         const normalizedDetail = normalizeProduct(detail);
-        const defaultColor = normalizedDetail.colors?.find((color) => color.is_default) || normalizedDetail.colors?.[0];
         setProduct(normalizedDetail);
         setAllProducts(all.map(normalizeProduct));
-        setSelectedColorId(defaultColor?.id ?? "all");
+        setSelectedColorId("all");
         setSelected(0);
       })
       .finally(() => setLoading(false));

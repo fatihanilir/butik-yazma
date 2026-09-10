@@ -364,7 +364,7 @@ app.post("/admin/products", authRequired, async (req, res) => {
   if (validationError) return res.status(400).json({ message: validationError });
   const product = await query(
     `insert into products(name,description,price,category_id,status,product_code,sort_order)
-     values($1,$2,$3,$4,$5,$6,coalesce((select max(sort_order) + 1 from products), 0)) returning *`,
+     values($1,$2,$3,$4,$5,$6,coalesce((select min(sort_order) - 1 from products), 0)) returning *`,
     [name, description, normalizePrice(price), category_id, status, product_code || null]
   );
   await saveProductColors(product.rows[0].id, name, colors);
